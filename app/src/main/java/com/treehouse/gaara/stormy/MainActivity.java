@@ -8,6 +8,8 @@ import android.os.Bundle;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.widget.ImageView;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.squareup.okhttp.Call;
@@ -16,17 +18,32 @@ import com.squareup.okhttp.OkHttpClient;
 import com.squareup.okhttp.Request;
 import com.squareup.okhttp.Response;
 
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import java.io.IOException;
+
+import butterknife.ButterKnife;
+import butterknife.InjectView;
 
 
 public class MainActivity extends Activity {
 
     private static final String TAG = MainActivity.class.getSimpleName();
+    private CurrentWeather mCurrentWeather;
+
+    @InjectView(R.id.timeLabel) TextView mTimeLabel;
+    @InjectView(R.id.temperatureLabel) TextView mTemperatureLabel;
+    @InjectView(R.id.humidityValue) TextView mHumidityValue;
+    @InjectView(R.id.precipValue) TextView mPrecipValue;
+    @InjectView(R.id.summaryLabel) TextView mSummaryLabel;
+    @InjectView(R.id.iconImageView) ImageView mIconImageView;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        ButterKnife.inject(this);
 
         String apiKey = "94f57fd1a480a9c1a22434e1b883b86e";
         double latitude = 37.8267;
@@ -35,7 +52,8 @@ public class MainActivity extends Activity {
                 "/" + latitude + "," + longitude;
 
         if(!isNetworkAvailable()) {
-            Toast.makeText(this, getString(R.string.network_unavailable_message), Toast.LENGTH_LONG).show();
+            //Toast.makeText(this, getString(R.string.network_unavailable_message), Toast.LENGTH_LONG).show();
+            alertUserAboutError(getString(R.string.error_title), getString(R.string.network_unavailable_message));
             return;
         }
 
@@ -54,27 +72,43 @@ public class MainActivity extends Activity {
             @Override
             public void onResponse(Response response) throws IOException {
                 try {
-                    Log.v(TAG, response.body().string());
+                    String jsonData = response.body().string();
+                    Log.v(TAG, jsonData);
                     if(response.isSuccessful()) {
-
+                        mCurrentWeather = getCurrentDetails(jsonData);
                     } else {
                         alertUserAboutError(getString(R.string.error_title), getString(R.string.error_message));
                     }
                 } catch (IOException e) {
                     Log.e(TAG, "Exception caught: ", e);
+                } catch (JSONException e) {
+                    Log.e(TAG, "Exception caught: ", e);
                 }
-            }
-
-            private void alertUserAboutError(String title, String message) {
-                AlertDialogFragment dialog = new AlertDialogFragment();
-                Bundle bundle = new Bundle();
-                bundle.putString(Constants.TITLE, title);
-                bundle.putString(Constants.MESSAGE, message);
-                dialog.setArguments(bundle);
-                dialog.show(getFragmentManager(), "error_dialog");
             }
         });
 
+    }
+
+    private CurrentWeather getCurrentDetails(String jsonData) throws JSONException {
+
+        JSONObject forecast = new JSONObject(jsonData);
+        String timezone = forecast.getString("timezone");
+        Log.i(TAG, "From JSON: " + timezone);
+
+        JSONObject currently = forecast.getJSONObject("currently");
+
+        CurrentWeather currentWeather = new CurrentWeather();
+        currentWeather.setHumidity(currently.getDouble("humidity"));
+        currentWeather.setIcon(currently.getString("icon"));
+        currentWeather.setPrecipChange(currently.getDouble("precipProbability"));
+        currentWeather.setSummary(currently.getString("summary"));
+        currentWeather.setTemperature(currently.getDouble("temperature"));
+        currentWeather.setTime(currently.getLong("time"));
+        currentWeather.setTimeZone(timezone);
+
+        Log.d(TAG, String.valueOf(currentWeather.getTime()));
+
+        return currentWeather;
     }
 
     private boolean isNetworkAvailable() {
@@ -86,5 +120,14 @@ public class MainActivity extends Activity {
 
         return (networkInfo != null &&
                 networkInfo.isConnected());
+    }
+
+    private void alertUserAboutError(String title, String message) {
+        AlertDialogFragment dialog = new AlertDialogFragment();
+        Bundle bundle = new Bundle();
+        bundle.putString(Constants.TITLE, title);
+        bundle.putString(Constants.MESSAGE, message);
+        dialog.setArguments(bundle);
+        dialog.show(getFragmentManager(), "error_dialog");
     }
 }
