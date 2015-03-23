@@ -1,7 +1,8 @@
-package com.treehouse.gaara.stormy;
+package com.treehouse.gaara.stormy.ui;
 
 import android.app.Activity;
 import android.content.Context;
+import android.content.Intent;
 import android.graphics.drawable.Drawable;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
@@ -17,7 +18,14 @@ import com.squareup.okhttp.Callback;
 import com.squareup.okhttp.OkHttpClient;
 import com.squareup.okhttp.Request;
 import com.squareup.okhttp.Response;
+import com.treehouse.gaara.stormy.Constants;
+import com.treehouse.gaara.stormy.R;
+import com.treehouse.gaara.stormy.weather.Current;
+import com.treehouse.gaara.stormy.weather.Day;
+import com.treehouse.gaara.stormy.weather.Forecast;
+import com.treehouse.gaara.stormy.weather.Hour;
 
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -25,12 +33,13 @@ import java.io.IOException;
 
 import butterknife.ButterKnife;
 import butterknife.InjectView;
+import butterknife.OnClick;
 
 
 public class MainActivity extends Activity {
 
     private static final String TAG = MainActivity.class.getSimpleName();
-    private CurrentWeather mCurrentWeather;
+    private Forecast mForecast;
 
     @InjectView(R.id.timeLabel) TextView mTimeLabel;
     @InjectView(R.id.temperatureLabel) TextView mTemperatureLabel;
@@ -108,7 +117,7 @@ public class MainActivity extends Activity {
                     String jsonData = response.body().string();
                     Log.v(TAG, jsonData);
                     if(response.isSuccessful()) {
-                        mCurrentWeather = getCurrentDetails(jsonData);
+                        mForecast = parseForecastDetails(jsonData);
                         runOnUiThread(new Runnable() {
                             @Override
                             public void run() {
@@ -141,17 +150,81 @@ public class MainActivity extends Activity {
 
     private void updateDisplay() {
 
-        mTemperatureLabel.setText(mCurrentWeather.getTemperature() + "");
-        mTimeLabel.setText("At " + mCurrentWeather.getFormattedTime() + " it will be");
-        mHumidityValue.setText(mCurrentWeather.getHumidity() + "");
-        mPrecipValue.setText(mCurrentWeather.getPrecipChange() + "%");
-        mSummaryLabel.setText(mCurrentWeather.getSummary());
+        Current current = mForecast.getCurrent();
+        mTemperatureLabel.setText(current.getTemperature() + "");
+        mTimeLabel.setText("At " + current.getFormattedTime() + " it will be");
+        mHumidityValue.setText(current.getHumidity() + "");
+        mPrecipValue.setText(current.getPrecipChange() + "%");
+        mSummaryLabel.setText(current.getSummary());
 
-        Drawable drawable = getResources().getDrawable(mCurrentWeather.getIconId());
+        Drawable drawable = getResources().getDrawable(current.getIconId());
         mIconImageView.setImageDrawable(drawable);
     }
 
-    private CurrentWeather getCurrentDetails(String jsonData) throws JSONException {
+    private Forecast parseForecastDetails(String jsonData) throws JSONException {
+
+        Forecast forecast = new Forecast();
+
+        forecast.setCurrent(getCurrentDetails(jsonData));
+
+        forecast.setHourlyForecast(getHourlyForecast(jsonData));
+        forecast.setDailyForecast(getDailyForecast(jsonData));
+
+        return forecast;
+    }
+
+    private Hour[] getHourlyForecast(String jsonData) throws JSONException {
+
+        JSONObject forecast = new JSONObject(jsonData);
+        String timezone = forecast.getString("timezone");
+        JSONObject hourly = forecast.getJSONObject("hourly");
+        JSONArray data = hourly.getJSONArray("data");
+
+        Hour[] hours = new Hour[data.length()];
+        for(int i = 0; i < data.length(); i++) {
+            JSONObject jsonHour = data.getJSONObject(i);
+            Hour hour = new Hour();
+
+            hour.setSummary(jsonHour.getString("summary"));
+            hour.setTemperature(jsonHour.getDouble("temperature"));
+            hour.setIcon(jsonHour.getString("icon"));
+            hour.setTime(jsonHour.getLong("time"));
+            hour.setTimezone(timezone);
+
+            hours[i] = hour;
+        }
+
+        return hours;
+    }
+
+    private Day[] getDailyForecast(String jsonData)  throws JSONException {
+
+        JSONObject forecast = new JSONObject(jsonData);
+        String timezone = forecast.getString("timezone");
+
+        JSONObject daily = forecast.getJSONObject("daily");
+        JSONArray data = daily.getJSONArray("data");
+
+        Day[] days = new Day[data.length()];
+
+        for(int i = 0; i < data.length(); i++) {
+
+            JSONObject jsonDay = data.getJSONObject(i);
+            Day day = new Day();
+
+            day.setSummary(jsonDay.getString("summary"));
+            day.setIcon(jsonDay.getString("icon"));
+            day.setMeTemperatureMax(jsonDay.getDouble("temperatureMax"));
+            day.setTime(jsonDay.getLong("time"));
+            day.setTimeZone(timezone);
+
+            days[i] = day;
+        }
+
+        return days;
+    }
+
+    private Current getCurrentDetails(String jsonData) throws JSONException {
 
         JSONObject forecast = new JSONObject(jsonData);
         String timezone = forecast.getString("timezone");
@@ -159,7 +232,7 @@ public class MainActivity extends Activity {
 
         JSONObject currently = forecast.getJSONObject("currently");
 
-        CurrentWeather currentWeather = new CurrentWeather();
+        Current currentWeather = new Current();
         currentWeather.setHumidity(currently.getDouble("humidity"));
         currentWeather.setIcon(currently.getString("icon"));
         currentWeather.setPrecipChange(currently.getDouble("precipProbability"));
@@ -191,5 +264,11 @@ public class MainActivity extends Activity {
         bundle.putString(Constants.MESSAGE, message);
         dialog.setArguments(bundle);
         dialog.show(getFragmentManager(), "error_dialog");
+    }
+
+    @OnClick(R.id.dailyButton)
+    public void startDailyActivity(View view) {
+        Intent intent = new Intent(this, DailyForecastActivity.class);
+        startActivity(intent);
     }
 }

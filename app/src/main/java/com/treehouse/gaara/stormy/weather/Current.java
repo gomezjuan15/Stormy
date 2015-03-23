@@ -1,4 +1,6 @@
-package com.treehouse.gaara.stormy;
+package com.treehouse.gaara.stormy.weather;
+
+import com.treehouse.gaara.stormy.R;
 
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -7,7 +9,7 @@ import java.util.TimeZone;
 /**
  * Created by Gaara on 3/18/2015.
  */
-public class CurrentWeather {
+public class Current {
 
     private String mIcon;
     private long mTime;

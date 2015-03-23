@@ -1,10 +1,13 @@
-package com.treehouse.gaara.stormy;
+package com.treehouse.gaara.stormy.ui;
 
 import android.app.AlertDialog;
 import android.app.Dialog;
 import android.app.DialogFragment;
 import android.content.Context;
 import android.os.Bundle;
+
+import com.treehouse.gaara.stormy.Constants;
+import com.treehouse.gaara.stormy.R;
 
 /**
  * Created by Gaara on 3/11/2015.
