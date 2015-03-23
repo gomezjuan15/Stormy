@@ -214,7 +214,7 @@ public class MainActivity extends Activity {
 
             day.setSummary(jsonDay.getString("summary"));
             day.setIcon(jsonDay.getString("icon"));
-            day.setMeTemperatureMax(jsonDay.getDouble("temperatureMax"));
+            day.setTemperatureMax(jsonDay.getDouble("temperatureMax"));
             day.setTime(jsonDay.getLong("time"));
             day.setTimeZone(timezone);
 
